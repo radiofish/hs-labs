@@ -25,8 +25,12 @@ export async function POST(request: NextRequest) {
     if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
       try {
         // Dynamic import for pdf-parse to work with Turbopack
-        const pdfParseModule = await import('pdf-parse');
-        const pdfParse = pdfParseModule.default || pdfParseModule;
+        // @ts-ignore - pdf-parse module structure varies between environments
+        const pdfParseModule: any = await import('pdf-parse');
+        // Handle both ESM and CommonJS module structures
+        const pdfParse = typeof pdfParseModule === 'function' 
+          ? pdfParseModule 
+          : pdfParseModule.default || pdfParseModule;
         const pdfData = await pdfParse(buffer);
         text = pdfData.text;
       } catch (error: any) {
