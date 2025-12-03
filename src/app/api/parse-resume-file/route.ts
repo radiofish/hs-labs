@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore - pdf-parse doesn't have proper TypeScript exports
-import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 
 export async function POST(request: NextRequest) {
@@ -26,6 +24,9 @@ export async function POST(request: NextRequest) {
     // Parse based on file type
     if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
       try {
+        // Dynamic import for pdf-parse to work with Turbopack
+        const pdfParseModule = await import('pdf-parse');
+        const pdfParse = pdfParseModule.default || pdfParseModule;
         const pdfData = await pdfParse(buffer);
         text = pdfData.text;
       } catch (error: any) {
