@@ -13,6 +13,8 @@ export default function HandshakeIdeaLab() {
   const [dbConnected, setDbConnected] = useState(true);
   const [loading, setLoading] = useState(true);
   const [ideas, setIdeas] = useState<any[]>([]);
+  const [creatingPrototype, setCreatingPrototype] = useState<number | null>(null);
+  const [tabs, setTabs] = useState(['🧪 Idea Laboratory', '📊 Reality Check', '🔥 Resume Roaster', '💰 Salary Check']);
 
   const [newIdea, setNewIdea] = useState<any>({
     title: '',
@@ -49,6 +51,8 @@ export default function HandshakeIdeaLab() {
       effort: idea.effort ?? 5,
       hasPrototype: idea.hasprototype ?? idea.hasPrototype ?? idea.has_prototype ?? false,
       prototypeTab: idea.prototypetab ?? idea.prototypeTab ?? idea.prototype_tab ?? null,
+      prototypeCode: idea.prototypecode ?? idea.prototypeCode ?? idea.prototype_code ?? null,
+      prototypeConfig: idea.prototypeconfig ?? idea.prototypeConfig ?? idea.prototype_config ?? null,
       reasoning: idea.reasoning || {},
       created_at: idea.created_at || idea.createdAt
     };
@@ -119,6 +123,8 @@ export default function HandshakeIdeaLab() {
         effort: idea.effort,
         hasprototype: idea.hasPrototype,
         prototypetab: idea.prototypeTab,
+        prototypecode: idea.prototypeCode,
+        prototypeconfig: idea.prototypeConfig,
         reasoning: idea.reasoning,
         created_at: idea.created_at
       };
@@ -157,6 +163,8 @@ export default function HandshakeIdeaLab() {
         effort: idea.effort,
         hasprototype: idea.hasPrototype,
         prototypetab: idea.prototypeTab,
+        prototypecode: idea.prototypeCode,
+        prototypeconfig: idea.prototypeConfig,
         reasoning: idea.reasoning
       };
       
@@ -286,6 +294,67 @@ export default function HandshakeIdeaLab() {
     }
   };
 
+  const handleCreatePrototype = async (idea: any) => {
+    if (!idea.userNeed) {
+      alert('Please add a user need description before creating a prototype.');
+      return;
+    }
+
+    setCreatingPrototype(idea.id);
+    
+    try {
+      const response = await fetch('/api/generate-prototype', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: idea.title,
+          userNeed: idea.userNeed,
+          upsell: idea.upsell,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate prototype');
+      }
+
+      const result = await response.json();
+      
+      // Find the next available tab index (after the existing tabs)
+      const nextTabIndex = tabs.length;
+      
+      // Update the idea with prototype info
+      const updatedIdea = {
+        ...idea,
+        hasPrototype: true,
+        prototypeTab: nextTabIndex,
+        prototypeCode: result.prototypeCode,
+        prototypeConfig: result.prototypeConfig,
+      };
+      
+      // Update in state
+      setIdeas(ideas.map(i => i.id === idea.id ? updatedIdea : i));
+      
+      // Update in database
+      await updateIdeaInDb(updatedIdea);
+      
+      // Add new tab
+      setTabs([...tabs, result.tabName || `${idea.title} Prototype`]);
+      
+      // Switch to the new prototype tab
+      setActiveTab(nextTabIndex);
+      
+      alert('Prototype created successfully!');
+    } catch (error: any) {
+      console.error('Error creating prototype:', error);
+      alert(`Failed to create prototype: ${error.message}`);
+    } finally {
+      setCreatingPrototype(null);
+    }
+  };
+
   const generateIdeaSuggestions = (title: string, userNeed = '') => {
     // Simulated AI logic - in production, this would call Claude API
     const titleLower = title.toLowerCase();
@@ -407,8 +476,6 @@ export default function HandshakeIdeaLab() {
 
     return suggestions;
   };
-
-  const tabs = ['🧪 Idea Laboratory', '📊 Reality Check', '🔥 Resume Roaster', '💰 Salary Check'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-8">
@@ -596,6 +663,20 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                   <span>View Prototype</span>
                                 </button>
                               )}
+                              {!idea.hasPrototype && (
+                                <button
+                                  onClick={() => handleCreatePrototype(idea)}
+                                  disabled={creatingPrototype === idea.id}
+                                  className={`flex items-center space-x-1 text-sm font-semibold ${
+                                    creatingPrototype === idea.id
+                                      ? 'text-gray-400 cursor-not-allowed'
+                                      : 'text-green-600 hover:text-green-800'
+                                  }`}
+                                >
+                                  <Plus size={14} />
+                                  <span>{creatingPrototype === idea.id ? 'Creating...' : 'Create Prototype'}</span>
+                                </button>
+                              )}
                               <button
                                 onClick={() => {
                                   setEditingIdea(idea);
@@ -748,6 +829,13 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
         {activeTab === 1 && <RealityCheckPrototype />}
         {activeTab === 2 && <ResumeRoasterPrototype />}
         {activeTab === 3 && <SalaryCheckPrototype />}
+        {activeTab >= 4 && (() => {
+          const prototypeIdea = ideas.find(i => i.prototypeTab === activeTab);
+          if (prototypeIdea && prototypeIdea.prototypeConfig) {
+            return <GenericPrototype idea={prototypeIdea} />;
+          }
+          return <div className="bg-white rounded-lg shadow-lg p-8">Prototype not found</div>;
+        })()}
       </div>
 
       {/* Add Idea Modal */}
@@ -1531,6 +1619,209 @@ const SalaryCheckPrototype = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const GenericPrototype = ({ idea }: { idea: any }) => {
+  const config = idea.prototypeConfig;
+  const [inputValues, setInputValues] = useState<Record<string, any>>({});
+  const [outputs, setOutputs] = useState<Record<string, any>>({});
+
+  if (!config) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-8">
+        <p className="text-gray-600">Prototype configuration not found.</p>
+      </div>
+    );
+  }
+
+  const handleInputChange = (id: string, value: any) => {
+    setInputValues({ ...inputValues, [id]: value });
+  };
+
+  const calculateOutputs = () => {
+    const calculated: Record<string, any> = {};
+    const calc = config.calculation;
+    
+    if (!calc) {
+      // Fallback if no calculation provided
+      config.outputs?.forEach((output: any) => {
+        calculated[output.id] = 'No calculation defined';
+      });
+      setOutputs(calculated);
+      return;
+    }
+    
+    // Helper to safely evaluate expressions
+    const safeEval = (expression: string, inputs: Record<string, any>): any => {
+      try {
+        // Replace input IDs with their values
+        let expr = expression;
+        Object.keys(inputs).forEach(inputId => {
+          const value = inputs[inputId];
+          if (value === null || value === undefined || value === '') {
+            return; // Skip empty inputs
+          }
+          // Replace input IDs with their actual values
+          const regex = new RegExp(`\\b${inputId}\\b`, 'g');
+          if (typeof value === 'string') {
+            expr = expr.replace(regex, `"${value.replace(/"/g, '\\"')}"`);
+          } else {
+            expr = expr.replace(regex, String(value));
+          }
+        });
+        
+        // Use Function constructor for safer evaluation
+        // This is still somewhat risky but better than eval
+        return new Function('return ' + expr)();
+      } catch (e) {
+        console.error('Error evaluating expression:', expression, 'with inputs:', inputs, e);
+        return null;
+      }
+    };
+    
+    // Process each output - use the first output's calculation for now
+    // In the future, each output could have its own calculation
+    config.outputs?.forEach((output: any, index: number) => {
+      // Check if calculation is a string (old format) or object (new format)
+      if (typeof calc === 'string') {
+        // Old format: just a description - try to infer logic
+        const desc = calc.toLowerCase();
+        const nums = Object.values(inputValues).filter(v => typeof v === 'number' && v !== null && v !== undefined);
+        
+        if (desc.includes('multiply') || desc.includes('times') || desc.includes('x')) {
+          calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a * b, 1).toLocaleString() : 'Enter numbers';
+        } else if (desc.includes('add') || desc.includes('sum') || desc.includes('plus') || desc.includes('+')) {
+          calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a + b, 0).toLocaleString() : 'Enter numbers';
+        } else if (desc.includes('divide') || desc.includes('per') || desc.includes('/')) {
+          calculated[output.id] = nums.length >= 2 && nums[1] !== 0 ? (nums[0] / nums[1]).toFixed(2) : 'Enter two numbers';
+        } else if (desc.includes('subtract') || desc.includes('minus') || desc.includes('-')) {
+          calculated[output.id] = nums.length >= 2 ? (nums[0] - nums[1]).toLocaleString() : 'Enter two numbers';
+        } else {
+          calculated[output.id] = 'Calculation: ' + calc;
+        }
+      } else if (calc && typeof calc === 'object') {
+        // New format: structured calculation
+        if (calc.type === 'formula' && calc.formula) {
+          const result = safeEval(calc.formula, inputValues);
+          calculated[output.id] = result !== null && result !== undefined 
+            ? (typeof result === 'number' ? (Number.isInteger(result) ? result.toLocaleString() : result.toFixed(2)) : String(result))
+            : 'Invalid calculation - check inputs';
+        } else if (calc.type === 'conditional' && calc.conditions) {
+          let result = null;
+          for (const condition of calc.conditions) {
+            const conditionResult = safeEval(condition.if, inputValues);
+            if (conditionResult) {
+              result = safeEval(condition.then, inputValues);
+              break;
+            }
+          }
+          calculated[output.id] = result !== null && result !== undefined
+            ? (typeof result === 'number' ? result.toLocaleString() : String(result))
+            : 'No condition matched';
+        } else if (calc.description) {
+          // Fallback to description parsing
+          const desc = calc.description.toLowerCase();
+          const nums = Object.values(inputValues).filter(v => typeof v === 'number');
+          if (desc.includes('multiply') || desc.includes('times')) {
+            calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a * b, 1).toLocaleString() : 'Enter numbers';
+          } else if (desc.includes('add') || desc.includes('sum')) {
+            calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a + b, 0).toLocaleString() : 'Enter numbers';
+          } else {
+            calculated[output.id] = calc.description;
+          }
+        } else {
+          calculated[output.id] = 'No calculation logic available';
+        }
+      } else {
+        calculated[output.id] = 'No calculation defined';
+      }
+    });
+    
+    setOutputs(calculated);
+  };
+
+  useEffect(() => {
+    if (Object.keys(inputValues).length > 0) {
+      calculateOutputs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputValues]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      <h2 className="text-3xl font-bold mb-2">{config.title || idea.title}</h2>
+      <p className="text-gray-600 mb-8">{config.description || idea.userNeed}</p>
+
+      <div className="space-y-6">
+        {/* Inputs */}
+        {config.inputs && config.inputs.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold mb-4">Inputs</h3>
+            {config.inputs.map((input: any) => (
+              <div key={input.id}>
+                <label className="block text-sm font-semibold mb-2">{input.label}</label>
+                {input.type === 'select' ? (
+                  <select
+                    value={inputValues[input.id] || ''}
+                    onChange={(e) => handleInputChange(input.id, e.target.value)}
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3"
+                  >
+                    <option value="">Select...</option>
+                    {input.options?.map((opt: string) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : input.type === 'textarea' ? (
+                  <textarea
+                    value={inputValues[input.id] || ''}
+                    onChange={(e) => handleInputChange(input.id, e.target.value)}
+                    placeholder={input.placeholder}
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 h-32"
+                  />
+                ) : (
+                  <input
+                    type={input.type}
+                    value={inputValues[input.id] || ''}
+                    onChange={(e) => handleInputChange(input.id, input.type === 'number' ? parseFloat(e.target.value) : e.target.value)}
+                    placeholder={input.placeholder}
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Outputs */}
+        {config.outputs && config.outputs.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold mb-4">Results</h3>
+            {config.outputs.map((output: any) => (
+              <div key={output.id} className="border rounded-lg p-4">
+                <label className="block text-sm font-semibold mb-2">{output.label}</label>
+                <div className="text-lg">
+                  {outputs[output.id] || 'Enter inputs above to see results'}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upsell */}
+        {config.upsellMessage && (
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mt-6">
+            <h4 className="font-semibold mb-2">🔓 {idea.upsell || config.upsellMessage}</h4>
+            <p className="text-sm text-gray-700 mb-4">
+              {idea.upsell || config.upsellMessage}
+            </p>
+            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700">
+              Unlock Full Features →
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
