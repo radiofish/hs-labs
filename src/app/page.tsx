@@ -4,6 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ChevronDown, ChevronUp, ExternalLink, X, Database, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+// Helper function to render text with larger emojis
+const renderWithLargeEmojis = (text: string, emojiSize: string = 'text-2xl') => {
+  // Match emoji characters (most common ranges)
+  const emojiRegex = /([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]+)/gu;
+  const parts = text.split(emojiRegex);
+  
+  return parts.map((part, index) => {
+    if (emojiRegex.test(part)) {
+      return <span key={index} className={`${emojiSize} inline-block align-middle`}>{part}</span>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 export default function HandshakeIdeaLab() {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedIdea, setExpandedIdea] = useState<number | null>(null);
@@ -481,7 +495,9 @@ export default function HandshakeIdeaLab() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Handshake Acquisition Laboratory</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            HS Idea Labs <span className="text-5xl">🤝</span><span className="text-5xl">💡</span><span className="text-5xl">🧪</span>
+          </h1>
           <p className="text-gray-600">Exploring utility-first value propositions to drive early career job seeker acquisition</p>
           
           {/* Database Status Banner */}
@@ -550,19 +566,26 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
         {/* Tab Navigation */}
         <div className="flex space-x-2 mb-6 border-b border-gray-200">
-          {tabs.map((tab, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveTab(index)}
-              className={`px-6 py-3 font-semibold transition-all ${
-                activeTab === index
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {tabs.map((tab, index) => {
+            // Extract emoji and text
+            const emojiMatch = tab.match(/^([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]+)/u);
+            const emoji = emojiMatch ? emojiMatch[1] : '';
+            const text = emoji ? tab.slice(emoji.length).trim() : tab;
+            return (
+              <button
+                key={index}
+                onClick={() => setActiveTab(index)}
+                className={`px-6 py-3 font-semibold transition-all ${
+                  activeTab === index
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {emoji && <span className="text-2xl mr-1">{emoji}</span>}
+                {text}
+              </button>
+            );
+          })}
         </div>
 
         {/* Tab Content */}
@@ -593,19 +616,21 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
             {/* Legend */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-2 text-sm text-gray-700">🍚 RICE Scoring Guide</h3>
+              <h3 className="font-semibold mb-2 text-sm text-gray-700">
+                <span className="text-2xl">🍚</span> RICE Scoring Guide
+              </h3>
               <div className="grid grid-cols-4 gap-4 text-xs">
                 <div>
-                  <span className="font-semibold">🎯 Reach:</span> How many users will this impact?
+                  <span className="font-semibold"><span className="text-xl">🎯</span> Reach:</span> How many users will this impact?
                 </div>
                 <div>
-                  <span className="font-semibold">⚡ Impact:</span> How much will it move the needle?
+                  <span className="font-semibold"><span className="text-xl">⚡</span> Impact:</span> How much will it move the needle?
                 </div>
                 <div>
-                  <span className="font-semibold">🔮 Confidence:</span> How sure are we about reach/impact?
+                  <span className="font-semibold"><span className="text-xl">🔮</span> Confidence:</span> How sure are we about reach/impact?
                 </div>
                 <div>
-                  <span className="font-semibold">⏱️ Effort:</span> How much work to build? (lower is better)
+                  <span className="font-semibold"><span className="text-xl">⏱️</span> Effort:</span> How much work to build? (lower is better)
                 </div>
               </div>
               <div className="flex space-x-4 mt-3 text-xs">
@@ -705,7 +730,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-2">
-                              <span className="text-xs font-semibold text-gray-700">🍚 RICE:</span>
+                              <span className="text-xs font-semibold text-gray-700"><span className="text-lg">🍚</span> RICE:</span>
                               <span
                                 className="px-3 py-1 rounded-full font-bold text-sm"
                                 style={{backgroundColor: getRICEColor(riceScore), color: '#333'}}
@@ -716,7 +741,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                             <div className="flex items-center space-x-3 text-sm">
                               <div className="flex items-center space-x-1">
-                                <span>🎯</span>
+                                <span className="text-xl">🎯</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.reach, 'reach')}}
@@ -725,7 +750,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span>⚡</span>
+                                <span className="text-xl">⚡</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.impact, 'impact')}}
@@ -734,7 +759,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span>🔮</span>
+                                <span className="text-xl">🔮</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.confidence, 'confidence')}}
@@ -743,7 +768,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span>⏱️</span>
+                                <span className="text-xl">⏱️</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.effort, 'effort')}}
@@ -782,7 +807,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                             <h4 className="font-semibold text-sm text-gray-900 mb-2">🎣 Upsell/Hook</h4>
                             <p className="text-sm text-gray-700 mb-4">{idea.upsell || 'Not specified'}</p>
 
-                            <h4 className="font-semibold text-sm text-gray-900 mb-2">📊 Data Needs</h4>
+                            <h4 className="font-semibold text-sm text-gray-900 mb-2"><span className="text-xl">📊</span> Data Needs</h4>
                             <p className="text-sm text-gray-700 mb-4">{idea.dataNeeds || 'Not specified'}</p>
 
                             {idea.reasoning && Object.keys(idea.reasoning).length > 0 && (
@@ -791,22 +816,22 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 <div className="space-y-2 text-sm">
                                   {idea.reasoning.reach && (
                                     <div>
-                                      <span className="font-semibold">🎯 Reach:</span> {idea.reasoning.reach}
+                                      <span className="font-semibold"><span className="text-xl">🎯</span> Reach:</span> {idea.reasoning.reach}
                                     </div>
                                   )}
                                   {idea.reasoning.impact && (
                                     <div>
-                                      <span className="font-semibold">⚡ Impact:</span> {idea.reasoning.impact}
+                                      <span className="font-semibold"><span className="text-xl">⚡</span> Impact:</span> {idea.reasoning.impact}
                                     </div>
                                   )}
                                   {idea.reasoning.confidence && (
                                     <div>
-                                      <span className="font-semibold">🔮 Confidence:</span> {idea.reasoning.confidence}
+                                      <span className="font-semibold"><span className="text-xl">🔮</span> Confidence:</span> {idea.reasoning.confidence}
                                     </div>
                                   )}
                                   {idea.reasoning.effort && (
                                     <div>
-                                      <span className="font-semibold">⏱️ Effort:</span> {idea.reasoning.effort}
+                                      <span className="font-semibold"><span className="text-xl">⏱️</span> Effort:</span> {idea.reasoning.effort}
                                     </div>
                                   )}
                                 </div>
@@ -947,7 +972,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                 <div className="grid grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold mb-1">🎯 Reach (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">🎯</span> Reach (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -958,7 +983,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1">⚡ Impact (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">⚡</span> Impact (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -969,7 +994,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1">🔮 Confidence (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">🔮</span> Confidence (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -980,7 +1005,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1">⏱️ Effort (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">⏱️</span> Effort (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -1070,7 +1095,7 @@ const RealityCheckPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2">📊 Reality Check Calculator</h2>
+      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">📊</span> Reality Check Calculator</h2>
       <p className="text-gray-600 mb-8">Can you actually afford to live there? Let's find out.</p>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
@@ -1269,7 +1294,7 @@ const ResumeRoasterPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2">🔥 Resume Roaster</h2>
+      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">🔥</span> Resume Roaster</h2>
       <p className="text-gray-600 mb-8">Honest feedback that doesn't sugarcoat. Your resume deserves better.</p>
 
       <div className="mb-6">
@@ -1358,7 +1383,7 @@ const ResumeRoasterPrototype = () => {
         disabled={!resume || loading}
         className="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed mb-6"
       >
-        {loading ? '🔥 Roasting your resume...' : '🔥 Roast My Resume'}
+        {loading ? <><span className="text-xl">🔥</span> Roasting your resume...</> : <><span className="text-xl">🔥</span> Roast My Resume</>}
       </button>
 
       {roast && (
@@ -1480,7 +1505,7 @@ const SalaryCheckPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2">💰 Am I Being Underpaid?</h2>
+      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">💰</span> Am I Being Underpaid?</h2>
       <p className="text-gray-600 mb-8">Find out if you're getting paid fairly. The truth might surprise you.</p>
 
       <div className="grid grid-cols-2 gap-6 mb-8">
