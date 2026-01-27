@@ -4,20 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, ChevronDown, ChevronUp, ExternalLink, X, Database, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// Helper function to render text with larger emojis
-const renderWithLargeEmojis = (text: string, emojiSize: string = 'text-2xl') => {
-  // Match emoji characters (most common ranges)
-  const emojiRegex = /([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]+)/gu;
-  const parts = text.split(emojiRegex);
-  
-  return parts.map((part, index) => {
-    if (emojiRegex.test(part)) {
-      return <span key={index} className={`${emojiSize} inline-block align-middle`}>{part}</span>;
-    }
-    return <span key={index}>{part}</span>;
-  });
-};
-
 export default function HandshakeIdeaLab() {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedIdea, setExpandedIdea] = useState<number | null>(null);
@@ -27,8 +13,6 @@ export default function HandshakeIdeaLab() {
   const [dbConnected, setDbConnected] = useState(true);
   const [loading, setLoading] = useState(true);
   const [ideas, setIdeas] = useState<any[]>([]);
-  const [creatingPrototype, setCreatingPrototype] = useState<number | null>(null);
-  const [tabs, setTabs] = useState(['🧪 Idea Laboratory', '📊 Reality Check', '🔥 Resume Roaster', '💰 Salary Check']);
 
   const [newIdea, setNewIdea] = useState<any>({
     title: '',
@@ -65,8 +49,6 @@ export default function HandshakeIdeaLab() {
       effort: idea.effort ?? 5,
       hasPrototype: idea.hasprototype ?? idea.hasPrototype ?? idea.has_prototype ?? false,
       prototypeTab: idea.prototypetab ?? idea.prototypeTab ?? idea.prototype_tab ?? null,
-      prototypeCode: idea.prototypecode ?? idea.prototypeCode ?? idea.prototype_code ?? null,
-      prototypeConfig: idea.prototypeconfig ?? idea.prototypeConfig ?? idea.prototype_config ?? null,
       reasoning: idea.reasoning || {},
       created_at: idea.created_at || idea.createdAt
     };
@@ -137,8 +119,6 @@ export default function HandshakeIdeaLab() {
         effort: idea.effort,
         hasprototype: idea.hasPrototype,
         prototypetab: idea.prototypeTab,
-        prototypecode: idea.prototypeCode,
-        prototypeconfig: idea.prototypeConfig,
         reasoning: idea.reasoning,
         created_at: idea.created_at
       };
@@ -177,8 +157,6 @@ export default function HandshakeIdeaLab() {
         effort: idea.effort,
         hasprototype: idea.hasPrototype,
         prototypetab: idea.prototypeTab,
-        prototypecode: idea.prototypeCode,
-        prototypeconfig: idea.prototypeConfig,
         reasoning: idea.reasoning
       };
       
@@ -308,67 +286,6 @@ export default function HandshakeIdeaLab() {
     }
   };
 
-  const handleCreatePrototype = async (idea: any) => {
-    if (!idea.userNeed) {
-      alert('Please add a user need description before creating a prototype.');
-      return;
-    }
-
-    setCreatingPrototype(idea.id);
-    
-    try {
-      const response = await fetch('/api/generate-prototype', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: idea.title,
-          userNeed: idea.userNeed,
-          upsell: idea.upsell,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate prototype');
-      }
-
-      const result = await response.json();
-      
-      // Find the next available tab index (after the existing tabs)
-      const nextTabIndex = tabs.length;
-      
-      // Update the idea with prototype info
-      const updatedIdea = {
-        ...idea,
-        hasPrototype: true,
-        prototypeTab: nextTabIndex,
-        prototypeCode: result.prototypeCode,
-        prototypeConfig: result.prototypeConfig,
-      };
-      
-      // Update in state
-      setIdeas(ideas.map(i => i.id === idea.id ? updatedIdea : i));
-      
-      // Update in database
-      await updateIdeaInDb(updatedIdea);
-      
-      // Add new tab
-      setTabs([...tabs, result.tabName || `${idea.title} Prototype`]);
-      
-      // Switch to the new prototype tab
-      setActiveTab(nextTabIndex);
-      
-      alert('Prototype created successfully!');
-    } catch (error: any) {
-      console.error('Error creating prototype:', error);
-      alert(`Failed to create prototype: ${error.message}`);
-    } finally {
-      setCreatingPrototype(null);
-    }
-  };
-
   const generateIdeaSuggestions = (title: string, userNeed = '') => {
     // Simulated AI logic - in production, this would call Claude API
     const titleLower = title.toLowerCase();
@@ -491,13 +408,13 @@ export default function HandshakeIdeaLab() {
     return suggestions;
   };
 
+  const tabs = ['🧪 Idea Laboratory', '📊 Reality Check', '🔥 Resume Roaster', '💰 Salary Check'];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            HS Idea Labs <span className="text-5xl">🤝</span><span className="text-5xl">💡</span><span className="text-5xl">🧪</span>
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Handshake Acquisition Laboratory</h1>
           <p className="text-gray-600">Exploring utility-first value propositions to drive early career job seeker acquisition</p>
           
           {/* Database Status Banner */}
@@ -566,26 +483,19 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
         {/* Tab Navigation */}
         <div className="flex space-x-2 mb-6 border-b border-gray-200">
-          {tabs.map((tab, index) => {
-            // Extract emoji and text
-            const emojiMatch = tab.match(/^([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]+)/u);
-            const emoji = emojiMatch ? emojiMatch[1] : '';
-            const text = emoji ? tab.slice(emoji.length).trim() : tab;
-            return (
-              <button
-                key={index}
-                onClick={() => setActiveTab(index)}
-                className={`px-6 py-3 font-semibold transition-all ${
-                  activeTab === index
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {emoji && <span className="text-2xl mr-1">{emoji}</span>}
-                {text}
-              </button>
-            );
-          })}
+          {tabs.map((tab, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveTab(index)}
+              className={`px-6 py-3 font-semibold transition-all ${
+                activeTab === index
+                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
         {/* Tab Content */}
@@ -616,21 +526,19 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
             {/* Legend */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-2 text-sm text-gray-700">
-                <span className="text-2xl">🍚</span> RICE Scoring Guide
-              </h3>
+              <h3 className="font-semibold mb-2 text-sm text-gray-700">🍚 RICE Scoring Guide</h3>
               <div className="grid grid-cols-4 gap-4 text-xs">
                 <div>
-                  <span className="font-semibold"><span className="text-xl">🎯</span> Reach:</span> How many users will this impact?
+                  <span className="font-semibold">🎯 Reach:</span> How many users will this impact?
                 </div>
                 <div>
-                  <span className="font-semibold"><span className="text-xl">⚡</span> Impact:</span> How much will it move the needle?
+                  <span className="font-semibold">⚡ Impact:</span> How much will it move the needle?
                 </div>
                 <div>
-                  <span className="font-semibold"><span className="text-xl">🔮</span> Confidence:</span> How sure are we about reach/impact?
+                  <span className="font-semibold">🔮 Confidence:</span> How sure are we about reach/impact?
                 </div>
                 <div>
-                  <span className="font-semibold"><span className="text-xl">⏱️</span> Effort:</span> How much work to build? (lower is better)
+                  <span className="font-semibold">⏱️ Effort:</span> How much work to build? (lower is better)
                 </div>
               </div>
               <div className="flex space-x-4 mt-3 text-xs">
@@ -688,20 +596,6 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                   <span>View Prototype</span>
                                 </button>
                               )}
-                              {!idea.hasPrototype && (
-                                <button
-                                  onClick={() => handleCreatePrototype(idea)}
-                                  disabled={creatingPrototype === idea.id}
-                                  className={`flex items-center space-x-1 text-sm font-semibold ${
-                                    creatingPrototype === idea.id
-                                      ? 'text-gray-400 cursor-not-allowed'
-                                      : 'text-green-600 hover:text-green-800'
-                                  }`}
-                                >
-                                  <Plus size={14} />
-                                  <span>{creatingPrototype === idea.id ? 'Creating...' : 'Create Prototype'}</span>
-                                </button>
-                              )}
                               <button
                                 onClick={() => {
                                   setEditingIdea(idea);
@@ -730,7 +624,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-2">
-                              <span className="text-xs font-semibold text-gray-700"><span className="text-lg">🍚</span> RICE:</span>
+                              <span className="text-xs font-semibold text-gray-700">🍚 RICE:</span>
                               <span
                                 className="px-3 py-1 rounded-full font-bold text-sm"
                                 style={{backgroundColor: getRICEColor(riceScore), color: '#333'}}
@@ -741,7 +635,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                             <div className="flex items-center space-x-3 text-sm">
                               <div className="flex items-center space-x-1">
-                                <span className="text-xl">🎯</span>
+                                <span>🎯</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.reach, 'reach')}}
@@ -750,7 +644,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span className="text-xl">⚡</span>
+                                <span>⚡</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.impact, 'impact')}}
@@ -759,7 +653,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span className="text-xl">🔮</span>
+                                <span>🔮</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.confidence, 'confidence')}}
@@ -768,7 +662,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 </span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <span className="text-xl">⏱️</span>
+                                <span>⏱️</span>
                                 <span
                                   className="px-2 py-1 rounded font-semibold"
                                   style={{backgroundColor: getScoreColor(idea.effort, 'effort')}}
@@ -807,7 +701,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                             <h4 className="font-semibold text-sm text-gray-900 mb-2">🎣 Upsell/Hook</h4>
                             <p className="text-sm text-gray-700 mb-4">{idea.upsell || 'Not specified'}</p>
 
-                            <h4 className="font-semibold text-sm text-gray-900 mb-2"><span className="text-xl">📊</span> Data Needs</h4>
+                            <h4 className="font-semibold text-sm text-gray-900 mb-2">📊 Data Needs</h4>
                             <p className="text-sm text-gray-700 mb-4">{idea.dataNeeds || 'Not specified'}</p>
 
                             {idea.reasoning && Object.keys(idea.reasoning).length > 0 && (
@@ -816,22 +710,22 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                                 <div className="space-y-2 text-sm">
                                   {idea.reasoning.reach && (
                                     <div>
-                                      <span className="font-semibold"><span className="text-xl">🎯</span> Reach:</span> {idea.reasoning.reach}
+                                      <span className="font-semibold">🎯 Reach:</span> {idea.reasoning.reach}
                                     </div>
                                   )}
                                   {idea.reasoning.impact && (
                                     <div>
-                                      <span className="font-semibold"><span className="text-xl">⚡</span> Impact:</span> {idea.reasoning.impact}
+                                      <span className="font-semibold">⚡ Impact:</span> {idea.reasoning.impact}
                                     </div>
                                   )}
                                   {idea.reasoning.confidence && (
                                     <div>
-                                      <span className="font-semibold"><span className="text-xl">🔮</span> Confidence:</span> {idea.reasoning.confidence}
+                                      <span className="font-semibold">🔮 Confidence:</span> {idea.reasoning.confidence}
                                     </div>
                                   )}
                                   {idea.reasoning.effort && (
                                     <div>
-                                      <span className="font-semibold"><span className="text-xl">⏱️</span> Effort:</span> {idea.reasoning.effort}
+                                      <span className="font-semibold">⏱️ Effort:</span> {idea.reasoning.effort}
                                     </div>
                                   )}
                                 </div>
@@ -854,13 +748,6 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
         {activeTab === 1 && <RealityCheckPrototype />}
         {activeTab === 2 && <ResumeRoasterPrototype />}
         {activeTab === 3 && <SalaryCheckPrototype />}
-        {activeTab >= 4 && (() => {
-          const prototypeIdea = ideas.find(i => i.prototypeTab === activeTab);
-          if (prototypeIdea && prototypeIdea.prototypeConfig) {
-            return <GenericPrototype idea={prototypeIdea} />;
-          }
-          return <div className="bg-white rounded-lg shadow-lg p-8">Prototype not found</div>;
-        })()}
       </div>
 
       {/* Add Idea Modal */}
@@ -972,7 +859,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
 
                 <div className="grid grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">🎯</span> Reach (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1">🎯 Reach (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -983,7 +870,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">⚡</span> Impact (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1">⚡ Impact (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -994,7 +881,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">🔮</span> Confidence (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1">🔮 Confidence (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -1005,7 +892,7 @@ ALTER TABLE ideas DISABLE ROW LEVEL SECURITY;`}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1"><span className="text-xl">⏱️</span> Effort (1-10)</label>
+                    <label className="block text-sm font-semibold mb-1">⏱️ Effort (1-10)</label>
                     <input
                       type="number"
                       min={1}
@@ -1095,7 +982,7 @@ const RealityCheckPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">📊</span> Reality Check Calculator</h2>
+      <h2 className="text-3xl font-bold mb-2">📊 Reality Check Calculator</h2>
       <p className="text-gray-600 mb-8">Can you actually afford to live there? Let's find out.</p>
 
       <div className="grid grid-cols-2 gap-8 mb-8">
@@ -1294,7 +1181,7 @@ const ResumeRoasterPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">🔥</span> Resume Roaster</h2>
+      <h2 className="text-3xl font-bold mb-2">🔥 Resume Roaster</h2>
       <p className="text-gray-600 mb-8">Honest feedback that doesn't sugarcoat. Your resume deserves better.</p>
 
       <div className="mb-6">
@@ -1383,7 +1270,7 @@ const ResumeRoasterPrototype = () => {
         disabled={!resume || loading}
         className="w-full bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed mb-6"
       >
-        {loading ? <><span className="text-xl">🔥</span> Roasting your resume...</> : <><span className="text-xl">🔥</span> Roast My Resume</>}
+        {loading ? '🔥 Roasting your resume...' : '🔥 Roast My Resume'}
       </button>
 
       {roast && (
@@ -1505,7 +1392,7 @@ const SalaryCheckPrototype = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2"><span className="text-4xl">💰</span> Am I Being Underpaid?</h2>
+      <h2 className="text-3xl font-bold mb-2">💰 Am I Being Underpaid?</h2>
       <p className="text-gray-600 mb-8">Find out if you're getting paid fairly. The truth might surprise you.</p>
 
       <div className="grid grid-cols-2 gap-6 mb-8">
@@ -1644,209 +1531,6 @@ const SalaryCheckPrototype = () => {
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-const GenericPrototype = ({ idea }: { idea: any }) => {
-  const config = idea.prototypeConfig;
-  const [inputValues, setInputValues] = useState<Record<string, any>>({});
-  const [outputs, setOutputs] = useState<Record<string, any>>({});
-
-  if (!config) {
-    return (
-      <div className="bg-white rounded-lg shadow-lg p-8">
-        <p className="text-gray-600">Prototype configuration not found.</p>
-      </div>
-    );
-  }
-
-  const handleInputChange = (id: string, value: any) => {
-    setInputValues({ ...inputValues, [id]: value });
-  };
-
-  const calculateOutputs = () => {
-    const calculated: Record<string, any> = {};
-    const calc = config.calculation;
-    
-    if (!calc) {
-      // Fallback if no calculation provided
-      config.outputs?.forEach((output: any) => {
-        calculated[output.id] = 'No calculation defined';
-      });
-      setOutputs(calculated);
-      return;
-    }
-    
-    // Helper to safely evaluate expressions
-    const safeEval = (expression: string, inputs: Record<string, any>): any => {
-      try {
-        // Replace input IDs with their values
-        let expr = expression;
-        Object.keys(inputs).forEach(inputId => {
-          const value = inputs[inputId];
-          if (value === null || value === undefined || value === '') {
-            return; // Skip empty inputs
-          }
-          // Replace input IDs with their actual values
-          const regex = new RegExp(`\\b${inputId}\\b`, 'g');
-          if (typeof value === 'string') {
-            expr = expr.replace(regex, `"${value.replace(/"/g, '\\"')}"`);
-          } else {
-            expr = expr.replace(regex, String(value));
-          }
-        });
-        
-        // Use Function constructor for safer evaluation
-        // This is still somewhat risky but better than eval
-        return new Function('return ' + expr)();
-      } catch (e) {
-        console.error('Error evaluating expression:', expression, 'with inputs:', inputs, e);
-        return null;
-      }
-    };
-    
-    // Process each output - use the first output's calculation for now
-    // In the future, each output could have its own calculation
-    config.outputs?.forEach((output: any, index: number) => {
-      // Check if calculation is a string (old format) or object (new format)
-      if (typeof calc === 'string') {
-        // Old format: just a description - try to infer logic
-        const desc = calc.toLowerCase();
-        const nums = Object.values(inputValues).filter(v => typeof v === 'number' && v !== null && v !== undefined);
-        
-        if (desc.includes('multiply') || desc.includes('times') || desc.includes('x')) {
-          calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a * b, 1).toLocaleString() : 'Enter numbers';
-        } else if (desc.includes('add') || desc.includes('sum') || desc.includes('plus') || desc.includes('+')) {
-          calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a + b, 0).toLocaleString() : 'Enter numbers';
-        } else if (desc.includes('divide') || desc.includes('per') || desc.includes('/')) {
-          calculated[output.id] = nums.length >= 2 && nums[1] !== 0 ? (nums[0] / nums[1]).toFixed(2) : 'Enter two numbers';
-        } else if (desc.includes('subtract') || desc.includes('minus') || desc.includes('-')) {
-          calculated[output.id] = nums.length >= 2 ? (nums[0] - nums[1]).toLocaleString() : 'Enter two numbers';
-        } else {
-          calculated[output.id] = 'Calculation: ' + calc;
-        }
-      } else if (calc && typeof calc === 'object') {
-        // New format: structured calculation
-        if (calc.type === 'formula' && calc.formula) {
-          const result = safeEval(calc.formula, inputValues);
-          calculated[output.id] = result !== null && result !== undefined 
-            ? (typeof result === 'number' ? (Number.isInteger(result) ? result.toLocaleString() : result.toFixed(2)) : String(result))
-            : 'Invalid calculation - check inputs';
-        } else if (calc.type === 'conditional' && calc.conditions) {
-          let result = null;
-          for (const condition of calc.conditions) {
-            const conditionResult = safeEval(condition.if, inputValues);
-            if (conditionResult) {
-              result = safeEval(condition.then, inputValues);
-              break;
-            }
-          }
-          calculated[output.id] = result !== null && result !== undefined
-            ? (typeof result === 'number' ? result.toLocaleString() : String(result))
-            : 'No condition matched';
-        } else if (calc.description) {
-          // Fallback to description parsing
-          const desc = calc.description.toLowerCase();
-          const nums = Object.values(inputValues).filter(v => typeof v === 'number');
-          if (desc.includes('multiply') || desc.includes('times')) {
-            calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a * b, 1).toLocaleString() : 'Enter numbers';
-          } else if (desc.includes('add') || desc.includes('sum')) {
-            calculated[output.id] = nums.length > 0 ? nums.reduce((a, b) => a + b, 0).toLocaleString() : 'Enter numbers';
-          } else {
-            calculated[output.id] = calc.description;
-          }
-        } else {
-          calculated[output.id] = 'No calculation logic available';
-        }
-      } else {
-        calculated[output.id] = 'No calculation defined';
-      }
-    });
-    
-    setOutputs(calculated);
-  };
-
-  useEffect(() => {
-    if (Object.keys(inputValues).length > 0) {
-      calculateOutputs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValues]);
-
-  return (
-    <div className="bg-white rounded-lg shadow-lg p-8">
-      <h2 className="text-3xl font-bold mb-2">{config.title || idea.title}</h2>
-      <p className="text-gray-600 mb-8">{config.description || idea.userNeed}</p>
-
-      <div className="space-y-6">
-        {/* Inputs */}
-        {config.inputs && config.inputs.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold mb-4">Inputs</h3>
-            {config.inputs.map((input: any) => (
-              <div key={input.id}>
-                <label className="block text-sm font-semibold mb-2">{input.label}</label>
-                {input.type === 'select' ? (
-                  <select
-                    value={inputValues[input.id] || ''}
-                    onChange={(e) => handleInputChange(input.id, e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3"
-                  >
-                    <option value="">Select...</option>
-                    {input.options?.map((opt: string) => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                ) : input.type === 'textarea' ? (
-                  <textarea
-                    value={inputValues[input.id] || ''}
-                    onChange={(e) => handleInputChange(input.id, e.target.value)}
-                    placeholder={input.placeholder}
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 h-32"
-                  />
-                ) : (
-                  <input
-                    type={input.type}
-                    value={inputValues[input.id] || ''}
-                    onChange={(e) => handleInputChange(input.id, input.type === 'number' ? parseFloat(e.target.value) : e.target.value)}
-                    placeholder={input.placeholder}
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Outputs */}
-        {config.outputs && config.outputs.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold mb-4">Results</h3>
-            {config.outputs.map((output: any) => (
-              <div key={output.id} className="border rounded-lg p-4">
-                <label className="block text-sm font-semibold mb-2">{output.label}</label>
-                <div className="text-lg">
-                  {outputs[output.id] || 'Enter inputs above to see results'}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Upsell */}
-        {config.upsellMessage && (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mt-6">
-            <h4 className="font-semibold mb-2">🔓 {idea.upsell || config.upsellMessage}</h4>
-            <p className="text-sm text-gray-700 mb-4">
-              {idea.upsell || config.upsellMessage}
-            </p>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700">
-              Unlock Full Features →
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

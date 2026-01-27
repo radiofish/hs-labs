@@ -51,7 +51,7 @@ Please provide a JSON response with the following structure:
 Focus on early career job seekers (Gen Z) as the target audience. Be specific and actionable in your responses.`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       messages: [
         {

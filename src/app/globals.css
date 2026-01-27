@@ -24,26 +24,3 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
-
-/* Make all emojis larger - target Unicode emoji ranges */
-* {
-  /* Emoji Unicode ranges: U+1F300-1F9FF, U+2600-26FF, U+2700-27BF, U+1F600-1F64F, etc. */
-  font-feature-settings: "liga" 1, "calt" 1;
-}
-
-/* Increase emoji size using font-size multiplier */
-span[data-emoji="true"],
-.emoji-large {
-  font-size: 1.5em;
-  line-height: 1;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-/* Make emojis in headings even larger */
-h1 .emoji-large,
-h2 .emoji-large,
-h3 .emoji-large,
-h4 .emoji-large {
-  font-size: 2em;
-}
