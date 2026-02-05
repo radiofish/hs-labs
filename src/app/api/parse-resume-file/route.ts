@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore - pdf-parse doesn't have proper TypeScript exports
-import pdfParse from 'pdf-parse';
+import { PDFParse } from 'pdf-parse';
 import mammoth from 'mammoth';
+
+// Parse PDF using pdf-parse v2.x API
+async function parsePdf(buffer: Buffer): Promise<string> {
+  const parser = new PDFParse({ data: buffer });
+  const result = await parser.getText();
+  await parser.destroy();
+  return result.text;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,8 +33,7 @@ export async function POST(request: NextRequest) {
     // Parse based on file type
     if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
       try {
-        const pdfData = await pdfParse(buffer);
-        text = pdfData.text;
+        text = await parsePdf(buffer);
       } catch (error: any) {
         return NextResponse.json(
           { error: `Failed to parse PDF: ${error.message}` },
